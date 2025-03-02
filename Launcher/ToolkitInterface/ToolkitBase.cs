@@ -756,7 +756,7 @@ namespace ToolkitLauncher.ToolkitInterface
 				if (generate_named_shaders) {
 
 					// Get the base path for the level tag data
-					string path_arg = full_args.FirstOrDefault(s => s.Contains("."));
+					string path_arg = full_args.FirstOrDefault(s => s.Contains("\\"));
 					if (path_arg == null) { throw new Exception($"{k_GenShaders} FAILED:\nUnable to locate tag path."); }
 
 					DirectoryInfo source_directory = null;
@@ -775,7 +775,6 @@ namespace ToolkitLauncher.ToolkitInterface
 					if (source_parent_directory == null) { throw new Exception($"{k_GenShaders} FAILED:\nUnable to locate valid import source path parent directory."); }
 
 					// Construct the path to the "shaders" and "bitmaps" folders
-					string tag_output_path = Path.Combine(BaseDirectory, "tags", path_arg);
 					string asset_path = null;
 
 					// We need to isolate {asset_path}, the directory path (not including filename):
@@ -784,6 +783,15 @@ namespace ToolkitLauncher.ToolkitInterface
 					catch { throw new Exception($"{k_GenShaders} FAILED:\nUnable to locate asset path."); }
 
 					if (string.IsNullOrWhiteSpace(asset_path)) { throw new Exception($"{k_GenShaders} FAILED:\nUnable to locate asset path."); }
+
+					string tag_output_path = null;
+
+					if (generate_named_shaders_import_model) {
+						tag_output_path = Path.Combine(BaseDirectory, "tags", path_arg);
+					}
+					else if (generate_named_shaders_import_level) {
+						tag_output_path = Path.Combine(BaseDirectory, "tags", asset_path);
+					}
 
 					if (!Directory.Exists(tag_output_path)) { throw new Exception($"{k_GenShadersEX}Unable to locate asset output folder in 'tags'."); }
 
