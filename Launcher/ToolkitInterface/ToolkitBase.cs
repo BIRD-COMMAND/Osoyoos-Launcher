@@ -841,7 +841,15 @@ namespace ToolkitLauncher.ToolkitInterface
 						// write the new file to disk with the new shader name
 
 						// Get the name of the bitmap file
-						string bitmap_name = Path.Combine(asset_path, "bitmaps", Path.GetFileNameWithoutExtension(bitmap_file));
+						string bitmap_name = null;
+						if (generate_named_shaders_import_model) {
+							bitmap_name = Path.Combine(path_arg, "bitmaps", Path.GetFileNameWithoutExtension(bitmap_file));
+						}
+						else if (generate_named_shaders_import_level) {
+							bitmap_name = Path.Combine(asset_path, "bitmaps", Path.GetFileNameWithoutExtension(bitmap_file));
+						}
+						if (string.IsNullOrWhiteSpace(bitmap_name)) { continue; }
+
 						// Construct the path to the shader file
 						string shader_file = Path.Combine(output_shaders_dir, Path.GetFileNameWithoutExtension(bitmap_file) + ".shader");
 						// If the shader file already exists, skip it
