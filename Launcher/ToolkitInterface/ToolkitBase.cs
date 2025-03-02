@@ -734,7 +734,7 @@ namespace ToolkitLauncher.ToolkitInterface
 		#region Generate Shaders With Named Bitmap References
 
 		/// <summary>
-		/// Generate shaders named after and referencing the bitmaps in the 'bitmaps' folder of the level
+		/// Generate shaders named after and referencing the bitmaps in the 'bitmaps' folder of the import
 		/// </summary>
 		/// <param name="full_args"> The full list of arguments passed to the <see cref="RunToolInternal"/> method </param>
 		/// <exception cref="Exception"> Throws exceptions if the <see cref="H3Toolkit_GenerateNamedShaders"/> flag is set to true but any resources are missing or any operations fail. </exception>
@@ -742,53 +742,64 @@ namespace ToolkitLauncher.ToolkitInterface
 			try {
 
 				// Check if the generate_named_shaders argument is present
-				bool generate_named_shaders = H3Toolkit_GenerateNamedShaders;
+				bool generate_named_shaders_import_level = H3Toolkit_GenerateNamedShaders;
 				H3Toolkit_GenerateNamedShaders = false;
+
+				// Check if the generate_named_shaders_import_model argument is present
+				bool generate_named_shaders_import_model = H3Toolkit_GenerateNamedShaders_Import_Model;
+				H3Toolkit_GenerateNamedShaders_Import_Model = false;
+
+				// Ultimately, we want to generate named shaders if any generate named shaders flags are true
+				bool generate_named_shaders = generate_named_shaders_import_level || generate_named_shaders_import_model;
 
 				// Generate Named Shaders With Base Bitmap
 				if (generate_named_shaders) {
 
-					// full_args = "levels\multi\structure\xyz\..."
-					// we need to take everything before "\structure\..."
-
-					// BaseDirectory + "\tags\" + "...\...\..." <-- everything before "\structure\..."
-					// this is the path to the directory containing the "shaders" and "bitmaps" folders
-
 					// Get the base path for the level tag data
 					string path_arg = full_args.FirstOrDefault(s => s.Contains("."));
-					if (path_arg == null) { throw new Exception($"{k_GenShaders} FAILED:\nUnable to locate level tag path."); }
+					if (path_arg == null) { throw new Exception($"{k_GenShaders} FAILED:\nUnable to locate tag path."); }
+
+					DirectoryInfo source_directory = null;
+					try {
+						// the full path we want should be "{BaseDirectory}\data\{asset_path}\file.xyz"
+						// path_arg should be "{asset_path}\file.xyz"
+						string import_source_path = Path.Combine(BaseDirectory, "data", path_arg);
+						source_directory = new DirectoryInfo(Path.GetDirectoryName(import_source_path));
+					}
+					catch { throw new Exception($"{k_GenShaders} FAILED:\nUnable to locate import source path."); }
+					if (source_directory == null) { throw new Exception($"{k_GenShaders} FAILED:\nUnable to locate import source path."); }
+
+					DirectoryInfo source_parent_directory = null;
+					try { source_parent_directory = source_directory.Parent; }
+					catch { throw new Exception($"{k_GenShaders} FAILED:\nUnable to locate valid import source path parent directory."); }
+					if (source_parent_directory == null) { throw new Exception($"{k_GenShaders} FAILED:\nUnable to locate valid import source path parent directory."); }
 
 					// Construct the path to the "shaders" and "bitmaps" folders
-					string[] path_elements = path_arg.Split(Path.DirectorySeparatorChar);
-					List<string> target_path_elements = new List<string>();
-					List<string> relative_path_elements = new List<string>();
-					target_path_elements.Add(BaseDirectory);
-					target_path_elements.Add("tags");
-					foreach (string element in path_elements) {
-						if (element == "structure") { break; }
-						target_path_elements.Add(element);
-						relative_path_elements.Add(element);
-					}
-					string target_dir = Path.Combine(target_path_elements.ToArray());
-					string relative_dir = Path.Combine(relative_path_elements.ToArray());
+					string tag_output_path = Path.Combine(BaseDirectory, "tags", path_arg);
+					string asset_path = null;
 
-					// at this point target_dir should be "BaseDirectory\tags\...\...\..."
+					// We need to isolate {asset_path}, the directory path (not including filename):
+					// excluding ["{BaseDirectory}\data\"] and composed of ["...\source_parent_directory.Name\"], not including the trailing ["source_directory.Name\file.xyz"]
+					try { asset_path = source_parent_directory.FullName.Replace(Path.Combine(BaseDirectory, "data"), "").TrimStart(Path.DirectorySeparatorChar); }
+					catch { throw new Exception($"{k_GenShaders} FAILED:\nUnable to locate asset path."); }
 
-					if (!Directory.Exists(target_dir)) { throw new Exception($"{k_GenShadersEX}Unable to locate level tag 'shaders' and 'bitmaps' folders."); }
+					if (string.IsNullOrWhiteSpace(asset_path)) { throw new Exception($"{k_GenShaders} FAILED:\nUnable to locate asset path."); }
+
+					if (!Directory.Exists(tag_output_path)) { throw new Exception($"{k_GenShadersEX}Unable to locate asset output folder in 'tags'."); }
 
 					// Check for "shaders" folder and "bitmaps" folder
-					string shaders_dir = Path.Combine(target_dir, "shaders");
-					string bitmaps_dir = Path.Combine(target_dir, "bitmaps");
+					string output_shaders_dir = Path.Combine(tag_output_path, "shaders");
+					string output_bitmaps_dir = Path.Combine(tag_output_path, "bitmaps");
 
-					if (!Directory.Exists(bitmaps_dir)) { throw new Exception($"{k_GenShadersEX}Unable to locate 'bitmaps' folder."); }
-					if (!Directory.Exists(shaders_dir)) {
-						try { Directory.CreateDirectory(shaders_dir); }
+					if (!Directory.Exists(output_bitmaps_dir)) { throw new Exception($"{k_GenShadersEX}Unable to locate 'bitmaps' folder."); }
+					if (!Directory.Exists(output_shaders_dir)) {
+						try { Directory.CreateDirectory(output_shaders_dir); }
 						catch (Exception ex) { throw new Exception($"{k_GenShadersEX}Unable to create 'shaders' folder.", ex); }
 					}
 
 					// Enumerate the bitmaps directory and gather all bitmap (.bitmap) files
 					string[] bitmap_files;
-					try { bitmap_files = Directory.GetFiles(bitmaps_dir, "*.bitmap"); }
+					try { bitmap_files = Directory.GetFiles(output_bitmaps_dir, "*.bitmap"); }
 					catch (Exception ex) { throw new Exception($"{k_GenShadersEX}Unable to gather files from 'bitmaps' folder.", ex); }
 
 					// If there are no bitmap files, throw an exception
@@ -822,9 +833,9 @@ namespace ToolkitLauncher.ToolkitInterface
 						// write the new file to disk with the new shader name
 
 						// Get the name of the bitmap file
-						string bitmap_name = Path.Combine(relative_dir, "bitmaps", Path.GetFileNameWithoutExtension(bitmap_file));
+						string bitmap_name = Path.Combine(asset_path, "bitmaps", Path.GetFileNameWithoutExtension(bitmap_file));
 						// Construct the path to the shader file
-						string shader_file = Path.Combine(shaders_dir, Path.GetFileNameWithoutExtension(bitmap_file) + ".shader");
+						string shader_file = Path.Combine(output_shaders_dir, Path.GetFileNameWithoutExtension(bitmap_file) + ".shader");
 						// If the shader file already exists, skip it
 						if (File.Exists(shader_file)) { continue; }
 
@@ -875,6 +886,11 @@ namespace ToolkitLauncher.ToolkitInterface
 		/// If true, the toolkit will generate shaders named after and referencing the bitmaps in the 'bitmaps' folder of the level
 		/// </summary>
 		public static bool H3Toolkit_GenerateNamedShaders { get; set; } = false;
+
+		/// <summary>
+		/// If true, the toolkit will generate shaders named after and referencing the bitmaps in the 'bitmaps' folder of the model
+		/// </summary>
+		public static bool H3Toolkit_GenerateNamedShaders_Import_Model { get; set; } = false;
 
 		/// <summary>
 		/// Generate Named Shaders With Base Bitmap string constant.

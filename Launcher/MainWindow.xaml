@@ -737,6 +737,7 @@
                                                                         <CheckBox Grid.Row="1" x:Name="verbose_anim" Content="Verbose Animation" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="{DynamicResource TextColor}" ToolTip="Enable to have more verbose output during animation imports"/>
                                                                         <CheckBox Grid.Row="2" x:Name="uncompressed_anim" Content="Uncompressed Animation" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="{DynamicResource TextColor}" ToolTip="Enable to import uncompressed animations"/>
                                                                         <CheckBox Grid.Row="3" x:Name="reset_compression" Content="Reset Compression" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="{DynamicResource TextColor}" ToolTip="Enable to reset compression"/>
+                                                                        <CheckBox Grid.Row="4" x:Name="generate_named_shaders_import_model" Content="Generate Named Shaders" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="{DynamicResource TextColor}" ToolTip="Generate named shaders with a base bitmap from existing '.bitmap' files."/>
                                                                     </Grid>
                                                                 </Grid>
                                                             </Grid>
